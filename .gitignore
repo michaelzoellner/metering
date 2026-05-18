@@ -1,0 +1,7 @@
+.venv/*
+.env
+.DS_STORE
+launch.json
+run_app.sh
+__pycache__/^
+*.pyc
