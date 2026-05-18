@@ -136,7 +136,7 @@ def store_latest_values():
     client.subscribe("#")  # Wildcard: alle Topics
     client.loop_start()
 
-    while not all(topic in messages['topic'].values for topic in meterNamesTopicsKeys['topic'].values):
+    while not all(topic in messages['meter_id'].values for topic in all_meter_ids):
         time.sleep(0.1)
 
     client.loop_stop()
@@ -145,7 +145,7 @@ def store_latest_values():
     insert_messages_to_db(messages)
 
     messages = pd.DataFrame(
-        columns=['timestamp','msg_timestamp','name','topic','import','export']
+        columns=['timestamp','msg_timestamp','meter_id','total_import','total_export']
     )
 
 def insert_messages_to_db(df):
@@ -169,10 +169,9 @@ def insert_messages_to_db(df):
             (
                 row['timestamp'],
                 row['msg_timestamp'],
-                row['name'],
-                row['topic'],
-                row['import'],
-                row['export']
+                row['meter_id'],
+                row['total_import'],
+                row['total_export']
             )
             for _, row in df.iterrows()
         ]
