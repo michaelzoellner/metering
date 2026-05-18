@@ -95,7 +95,7 @@ def on_message(client, userdata, msg):
                 try:
                     imp = float(imp)
                 except Exception as e:
-                    logging.warning('Could not convert import value %s for %s to float!' % (imp,name))
+                    logging.warning('Could not convert import value %s for %s to float!' % (imp,meter_id))
                     imp = None
             else:
                 imp = None
@@ -105,7 +105,7 @@ def on_message(client, userdata, msg):
                 try:
                     exp = float(exp)
                 except Exception as e:
-                    logging.warning('Could not convert export value %s for %s to float!' % (exp,name))
+                    logging.warning('Could not convert export value %s for %s to float!' % (exp,meter_id))
                     exp = None
             else:
                 exp = None
