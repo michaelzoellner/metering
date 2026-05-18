@@ -1,7 +1,7 @@
 # Version: 0.1.1
 services:
   collector:
-    image: ghcr.io/michaelzoellner/collector:latest
+    image: ghcr.io/michaelzoellner/metering-collector:latest
     restart: always
     depends_on:
       - db
