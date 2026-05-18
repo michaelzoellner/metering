@@ -66,9 +66,7 @@ def on_message(client, userdata, msg):
     global timestamp
 
     payload = msg.payload.decode("utf-8", errors="replace")
-    if os.getenv('LOG_ALL_MQTT_DATA',False):
-        print(f"Received: {msg.topic} → {payload}")
-
+    
     if 'metering/' in msg.topic:
         if os.getenv('LOG_ALL_MQTT_DATA',False):
             print(f"Received: {msg.topic} → {payload}")
