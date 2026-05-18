@@ -47,9 +47,12 @@ db_params = {
     'password': os.getenv('POSTGRES_PASSWORD', 'metering'),
 }
 
-messages = pd.DataFrame(
-    columns=['timestamp','msg_timestamp','name','topic','import','export']
-)
+def create_message_df():
+    messages = pd.DataFrame(
+        columns=['timestamp','msg_timestamp','meter_id','total_import','total_export']
+    )
+
+messages = create_message_df()
 
 timestamp = datetime.now(timezone.utc)
 
@@ -144,9 +147,7 @@ def store_latest_values():
 
     insert_messages_to_db(messages)
 
-    messages = pd.DataFrame(
-        columns=['timestamp','msg_timestamp','meter_id','total_import','total_export']
-    )
+    messages = create_message_df()
 
 def insert_messages_to_db(df):
     if df.empty:
