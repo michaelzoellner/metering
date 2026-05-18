@@ -3,18 +3,18 @@ name: Build and Push Docker Image
 on:
   push:
     branches:
-      - main  # Startet die Action, sobald Sie Code in den 'main' Branch pushen
+      - main
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: collector
+  FULL_IMAGE_NAME: ghcr.io/michaelzoellner/metering-collector
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write # Wichtig, um das Image in der Registry zu speichern
+      packages: write
 
     steps:
       - name: Checkout repository
@@ -25,21 +25,12 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }} # Wird von GitHub automatisch bereitgestellt
-
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=raw,value=latest
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: ./Dockerfile
+          context: ./collector  # 🛠️ Setzt den Arbeitsordner auf das collector-Verzeichnis
+          file: ./collector/Dockerfile # 🛠️ Zeigt exakt auf Ihr Dockerfile
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ env.FULL_IMAGE_NAME }}:latest
