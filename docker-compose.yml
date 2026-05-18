@@ -1,10 +1,7 @@
 # Version: 0.1.1
 services:
   collector:
-    build: 
-      context: https://github.com/michaelzoellner/metering.git
-      dockerfile: ./collector/Dockerfile
-      pull: true
+    image: ghcr.io/michaelzoellner/collector:latest
     restart: always
     depends_on:
       - db
