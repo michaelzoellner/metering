@@ -7,6 +7,8 @@ from datetime import datetime, timedelta, timezone
 
 from paho.mqtt.client import Client, MQTTv311, CallbackAPIVersion
 
+import psycopg2
+from psycopg2.extras import execute_values
 
 # For local testing
 local_env_path = os.path.join(os.getcwd(),'.env')
@@ -33,49 +35,17 @@ logging.info('Received MQTT-Password')
 pollInterval = int(os.getenv('POLL_INTERVAL'))
 logging.info('Received POLL_INTERVAL %s' % pollInterval)
 
-units_df = pd.read_csv('/data/units.csv')
+meters_df = pd.read_csv('/data/meters.csv')
+all_meter_ids = meters_df['id'].tolist()
+logging.info('Read meters.csv and got list of meter IDs as %s' % all_meter_ids)
 
-meterNamesMqttTopics = os.getenv('METER_NAMES_AND_MQTT_TOPICS')
-logging.info('Read units.csv and got list of meter IDs as %s' % units_df['meter_id'].tolist())
-
-if not meterNamesMqttTopics is None:
-    meterNamesMqttTopics = json.loads(meterNamesMqttTopics)
-
-if not os.getenv('IGNORE_DB', False):
-    import psycopg2
-    from psycopg2.extras import execute_values
-    
-    db_params = {
-        'host': os.getenv('TIMESCALE_HOST', 'timescaledb'),
-        'port': os.getenv('TIMESCALE_PORT', '5432'),
-        'dbname': os.getenv('TIMESCALE_DB', 'einzaehler'),
-        'user': os.getenv('TIMESCALE_USER', 'einzaehler'),
-        'password': os.getenv('TIMESCALE_PASSWORD', 'einzaehler'),
-    }
-
-meterNamesTopicsKeys = pd.DataFrame(
-    columns=['name','topic','import_key','export_key'])
-
-meterNamesTopicsKeys.loc[len(meterNamesTopicsKeys)] = {
-    'name': 'grid',
-    'topic': gridMqttTopic['topic'],
-    'import_key': gridMqttTopic['import_key'],
-    'export_key': gridMqttTopic['export_key'] if 'export_key' in gridMqttTopic.keys() else None
+db_params = {
+    'host': os.getenv('POSTGRES_HOST', 'db'),
+    'port': os.getenv('POSTGRES_PORT', '5432'),
+    'dbname': os.getenv('POSTGRES_DB', 'metering'),
+    'user': os.getenv('POSTGRES_USER', 'metering'),
+    'password': os.getenv('POSTGRES_PASSWORD', 'metering'),
 }
-
-for key in meterNamesMqttTopics.keys():
-    assert key != 'grid', 'The name ''grid'' is a reserved name for the grid meter!'
-    assert not key in meterNamesTopicsKeys['name'].values, 'The name %s is already used!' % key
-
-    topic = meterNamesMqttTopics[key]['topic']
-    assert not topic in meterNamesTopicsKeys['topic'].values, 'The topic %s is already assigned to another meeter!' % topic
-
-    meterNamesTopicsKeys.loc[len(meterNamesTopicsKeys)] = {
-        'name': key,
-        'topic': topic,
-        'import_key': meterNamesMqttTopics[key]['import_key'] if 'import_key' in meterNamesMqttTopics[key].keys() else None,
-        'export_key': meterNamesMqttTopics[key]['export_key'] if 'export_key' in meterNamesMqttTopics[key].keys() else None
-    }
 
 messages = pd.DataFrame(
     columns=['timestamp','msg_timestamp','name','topic','import','export']
@@ -94,13 +64,13 @@ def on_message(client, userdata, msg):
     if os.getenv('LOG_ALL_MQTT_DATA',False):
         print(f"Received: {msg.topic} → {payload}")
 
-    topic = msg.topic
+    topic = msg.topic.replace('metering/','')
 
-    if topic in meterNamesTopicsKeys['topic'].values:
+    if topic in all_meter_ids:
         if not msg.topic in messages['topic'].values:
             if msg.retain:
                 logging.info(
-                    'Received non-retained message for topic %s.' % topic
+                    'Received retained message for topic %s.' % topic
                 )
             else:
                 logging.warning(
@@ -108,48 +78,43 @@ def on_message(client, userdata, msg):
                 )
             
             payload = json.loads(payload)
-            if "Time" in payload.keys():
-                msg_timestamp = datetime.fromisoformat(payload["Time"])
+            if "timestamp" in payload.keys():
+                msg_timestamp = datetime.fromisoformat(payload["timestamp"])
             else:
                 msg_timestamp = datetime.now(timezone.utc)
             
-            name = meterNamesTopicsKeys.loc[meterNamesTopicsKeys['topic']==topic,'name'].iloc[0]
-            
-            imp = payload
-            if meterNamesTopicsKeys.loc[meterNamesTopicsKeys['topic']==topic,'import_key'].iloc[0] is None:
-                imp = None
-            else:
-                for k in meterNamesTopicsKeys.loc[meterNamesTopicsKeys['topic']==topic,'import_key'].iloc[0]:
-                    imp = imp[k]
+            meter_id = topic
+
+            if "total_import" in payload.keys():
+                imp = payload["total_import"]
                 try:
                     imp = float(imp)
                 except Exception as e:
                     logging.warning('Could not convert import value %s for %s to float!' % (imp,name))
                     imp = None
-
-            if meterNamesTopicsKeys.loc[meterNamesTopicsKeys['topic']==topic,'export_key'].iloc[0] is None:
-                exp = None
             else:
-                exp = payload
-                for k in meterNamesTopicsKeys.loc[meterNamesTopicsKeys['topic']==topic,'export_key'].iloc[0]:
-                    exp = exp[k]
+                imp = None
+
+            if "total_export" in payload.keys():
+                exp = payload["total_export"]
                 try:
                     exp = float(exp)
                 except Exception as e:
-                    logging.warning('Could not convert export value %s for %s to float!' % (imp,name))
-                    imp = None
-            
+                    logging.warning('Could not convert export value %s for %s to float!' % (exp,name))
+                    exp = None
+            else:
+                exp = None
+
                               
             messages.loc[len(messages)] = {
                 "timestamp": timestamp,
                 'msg_timestamp': msg_timestamp,
-                "name": name, 
-                "topic": topic,
-                "import": imp,
-                "export": exp
+                "meter_id": meter_id,
+                "total_import": imp,
+                "total_export": exp
                 }
     
-    if all(topic in messages['topic'].values for topic in meterNamesTopicsKeys['topic'].values):
+    if all(meter_id in messages['meter_id'].values for meter_id in all_meter_ids):
         logging.info("All expected topics received. Stopping loop.")
         for ind, row in messages.iterrows():
             logging.info(row)
@@ -229,25 +194,31 @@ def ensure_table_exists():
         conn = psycopg2.connect(**db_params)
         cursor = conn.cursor()
 
+        # 1. Tabelle erstellen (Spalten im Primary Key MÜSSEN "NOT NULL" sein)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS meterreadings (
                 timestamp TIMESTAMPTZ NOT NULL,
-                msg_timestamp TIMESTAMPTZ,
-                name TEXT,
-                topic TEXT,
-                import DOUBLE PRECISION,
-                export DOUBLE PRECISION
+                msg_timestamp TIMESTAMPTZ NOT NULL,
+                meter_id TEXT NOT NULL,
+                total_import NUMERIC(12, 4), -- NULL erlaubt, falls ein Zähler nur exportiert
+                total_export NUMERIC(12, 4), -- NULL erlaubt für Wasser/Wärme oder reine Verbraucher
+                PRIMARY KEY (meter_id, msg_timestamp)
             );
         """)
-        cursor.execute("SELECT create_hypertable('meterreadings', 'timestamp', if_not_exists => TRUE);")
+        
+        # 2. Der create_hypertable-Aufruf wurde hier komplett entfernt.
 
         conn.commit()
-        logging.info("Ensured meterreadings table exists and is hypertable.")
+        logging.info("Ensured meterreadings table exists in PostgreSQL.")
     except Exception as e:
         logging.error(f"Failed to ensure table exists: {e}")
     finally:
-        cursor.close()
-        conn.close()
+        # Sicherstellen, dass Variablen existieren, bevor sie geschlossen werden
+        if 'cursor' in locals():
+            cursor.close()
+        if 'conn' in locals():
+            conn.close()
+
 
 def wait_until_next_schedule():
     now = datetime.now()
@@ -256,8 +227,7 @@ def wait_until_next_schedule():
     wait_seconds = (next_quarter - now).total_seconds()
     time.sleep(wait_seconds)
 
-if not os.getenv('IGNORE_DB', False):
-    ensure_table_exists()
+ensure_table_exists()
 
 #logging.info('Waiting to start logging in %s min schedule...' % pollInterval)
 #wait_until_next_schedule()
