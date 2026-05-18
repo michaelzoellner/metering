@@ -161,7 +161,7 @@ def insert_messages_to_db(df):
 
         # Prepare insert
         insert_query = """
-            INSERT INTO meterreadings (timestamp, msg_timestamp, name, topic, import, export)
+            INSERT INTO meterreadings (timestamp, msg_timestamp, meter_id, total_import, total_export)
             VALUES %s
         """
 
