@@ -30,7 +30,7 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
-          context: ./collector  # 🛠️ Setzt den Arbeitsordner auf das collector-Verzeichnis
-          file: ./collector/Dockerfile # 🛠️ Zeigt exakt auf Ihr Dockerfile
+          context: .  # 👈 Zurück auf das Hauptverzeichnis stellen
+          file: ./collector/Dockerfile # 👈 Das Dockerfile bleibt im Unterordner
           push: true
           tags: ${{ env.FULL_IMAGE_NAME }}:latest
