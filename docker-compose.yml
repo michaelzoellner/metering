@@ -8,6 +8,7 @@ services:
     volumes:
       - ${PROJECT_DATA_PATH}:/data:ro
     environment:
+      - LOG_ALL_MQTT_DATA=${LOG_ALL_MQTT_DATA}
       - MQTT_BROKER=${MQTT_BROKER}
       - MQTT_USER=${MQTT_USER}
       - MQTT_PASS=${MQTT_PASS}
