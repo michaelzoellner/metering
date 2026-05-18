@@ -48,7 +48,7 @@ db_params = {
 }
 
 def create_message_df():
-    messages = pd.DataFrame(
+    return pd.DataFrame(
         columns=['timestamp','msg_timestamp','meter_id','total_import','total_export']
     )
 
