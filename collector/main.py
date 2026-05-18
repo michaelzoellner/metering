@@ -32,6 +32,8 @@ logging.info('Received MQTT-User %s' % mqttUser)
 mqttPass = os.getenv('MQTT_PASS')
 logging.info('Received MQTT-Password')
 
+logging.info('Logging all incoming MQTT messages is ' + ('enabled' if os.getenv('LOG_ALL_MQTT_DATA',False) else 'disabled'))
+
 pollInterval = int(os.getenv('POLL_INTERVAL'))
 logging.info('Received POLL_INTERVAL %s' % pollInterval)
 
