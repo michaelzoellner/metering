@@ -70,7 +70,7 @@ def on_message(client, userdata, msg):
     topic = msg.topic.replace('metering/','')
 
     if topic in all_meter_ids:
-        if not msg.topic in messages['topic'].values:
+        if not topic in messages['meter_id'].values:
             if msg.retain:
                 logging.info(
                     'Received retained message for topic %s.' % topic
