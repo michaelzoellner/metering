@@ -4,6 +4,7 @@ services:
     build: 
       context: https://github.com/michaelzoellner/metering.git
       dockerfile: ./collector/Dockerfile
+      pull: true
     restart: always
     depends_on:
       - db
