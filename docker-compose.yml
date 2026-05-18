@@ -7,7 +7,7 @@ services:
     depends_on:
       - db
     volumes:
-      - $(PROJECT_DATA_PATH):/data:ro
+      - ${PROJECT_DATA_PATH}:/data:ro
     environment:
       - MQTT_BROKER=${MQTT_BROKER}
       - MQTT_USER=${MQTT_USER}
@@ -26,4 +26,4 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
-      - $(POSTGRES_DATA_PATH):/var/lib/postgresql/data
+      - ${POSTGRES_DATA_PATH}:/var/lib/postgresql/data
