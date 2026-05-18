@@ -72,7 +72,8 @@ def on_message(client, userdata, msg):
     if 'metering/' in msg.topic:
         if os.getenv('LOG_ALL_MQTT_DATA',False):
             print(f"Received: {msg.topic} → {payload}")
-        topic = msg.topic.replace('metering/','')    
+        
+    topic = msg.topic.replace('metering/','')    
 
     if topic in all_meter_ids:
         if not topic in messages['meter_id'].values:
