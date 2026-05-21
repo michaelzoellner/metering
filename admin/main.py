@@ -5,6 +5,7 @@ from fastapi.responses import FileResponse
 import secrets
 from config import settings
 from routers import units, meters, residents, residencies, import_csv
+from fastapi.responses import Response
 
 app = FastAPI(
     title="Metering Admin API",
@@ -39,3 +40,18 @@ app.mount("/static", StaticFiles(directory="/app/static"), name="static")
 @app.get("/", include_in_schema=False)
 def root():
     return FileResponse("/app/static/index.html")
+
+
+@app.get("/logout", include_in_schema=False)
+def logout():
+    """
+    Überschreibt den Browser-Credential-Cache mit ungültigen Daten,
+    was einer HTTP-Basic-Auth-Session effektiv beendet.
+    """
+    return Response(
+        content="Erfolgreich abgemeldet. "
+                "<a href='/'>Zurück zum Dashboard</a>",
+        status_code=401,
+        headers={"WWW-Authenticate": 'Basic realm="Metering Admin"'},
+        media_type="text/html",
+    )

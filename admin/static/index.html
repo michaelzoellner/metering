@@ -117,6 +117,9 @@
   <button onclick="showTab('residencies',this)">Mietverhältnisse</button>
   <button onclick="showTab('meters',this)">Zähler</button>
   <button onclick="showTab('import',this)">CSV-Import</button>
+    <div style="margin-left:auto">
+    <button onclick="logout()" style="color:var(--err)">⏻ Abmelden</button>
+  </div>
 </nav>
 
 <main>
@@ -787,6 +790,18 @@ async function importCSV(type) {
     if (data.errors.length) txt += '\n\n⚠️ Hinweise:\n' + data.errors.join('\n');
     res.textContent = txt;
   } catch (e) { res.textContent = '❌ Fehler: ' + e.message; }
+}
+
+function logout() {
+  // Fetch mit falschen Credentials → überschreibt den Browser-Cache
+  fetch('/logout', {
+    headers: {
+      'Authorization': 'Basic ' + btoa('logout:logout')
+    }
+  }).finally(() => {
+    // Nach dem Cache-Reset zur Login-Seite weiterleiten
+    window.location.href = '/';
+  });
 }
 
 // ══════════════════════════════════════════════════════════
