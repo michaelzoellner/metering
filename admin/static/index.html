@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Metering Admin</title>
+<style>
+  :root {
+    --bg: #0f172a; --surface: #1e293b; --surface2: #334155;
+    --accent: #38bdf8; --accent2: #818cf8;
+    --text: #e2e8f0; --muted: #94a3b8;
+    --ok: #4ade80; --warn: #fb923c; --err: #f87171;
+    --radius: 8px; --font: 'Segoe UI', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font);
+         min-height: 100vh; display: flex; flex-direction: column; }
+
+  /* ── Nav ── */
+  nav { background: var(--surface); border-bottom: 1px solid var(--surface2);
+        display: flex; align-items: center; gap: 0; padding: 0 1.5rem; }
+  nav .brand { font-weight: 700; font-size: 1.1rem; color: var(--accent);
+               padding: 1rem 1.5rem 1rem 0; border-right: 1px solid var(--surface2);
+               margin-right: 1rem; white-space: nowrap; }
+  nav button { background: none; border: none; color: var(--muted); cursor: pointer;
+               padding: .75rem 1rem; font-size: .875rem; border-bottom: 3px solid transparent;
+               transition: color .15s, border-color .15s; white-space: nowrap; }
+  nav button:hover { color: var(--text); }
+  nav button.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ── Main ── */
+  main { flex: 1; padding: 2rem; max-width: 1200px; width: 100%; margin: 0 auto; }
+  .tab { display: none; } .tab.active { display: block; }
+
+  /* ── Section header ── */
+  .section-header { display: flex; justify-content: space-between; align-items: center;
+                    margin-bottom: 1.25rem; flex-wrap: wrap; gap: .75rem; }
+  .section-header h2 { font-size: 1.25rem; font-weight: 600; }
+  .toggle-inactive { display: flex; align-items: center; gap: .5rem;
+                     font-size: .8rem; color: var(--muted); cursor: pointer; }
+  .toggle-inactive input { accent-color: var(--accent); }
+
+  /* ── Cards / Table ── */
+  .card { background: var(--surface); border-radius: var(--radius);
+          border: 1px solid var(--surface2); overflow: hidden; margin-bottom: 1.5rem; }
+  table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+  th { background: var(--surface2); text-align: left; padding: .6rem 1rem;
+       font-weight: 600; color: var(--muted); white-space: nowrap; }
+  td { padding: .6rem 1rem; border-top: 1px solid var(--surface2); vertical-align: middle; }
+  tr:hover td { background: rgba(255,255,255,.03); }
+  .badge { display: inline-block; padding: .2rem .6rem; border-radius: 999px;
+           font-size: .75rem; font-weight: 600; }
+  .badge-ok   { background: rgba(74,222,128,.15); color: var(--ok); }
+  .badge-warn { background: rgba(251,146,60,.15); color: var(--warn); }
+  .badge-err  { background: rgba(248,113,113,.15); color: var(--err); }
+  .badge-muted { background: rgba(148,163,184,.15); color: var(--muted); }
+
+  /* ── Buttons ── */
+  .btn { border: none; border-radius: var(--radius); cursor: pointer; font-size: .875rem;
+         padding: .45rem .9rem; font-weight: 500; transition: opacity .15s; }
+  .btn:hover { opacity: .85; }
+  .btn-primary { background: var(--accent); color: #0f172a; }
+  .btn-secondary { background: var(--surface2); color: var(--text); }
+  .btn-danger { background: var(--err); color: #0f172a; }
+  .btn-sm { padding: .3rem .6rem; font-size: .78rem; }
+
+  /* ── Modal ── */
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.6);
+                    display: flex; align-items: center; justify-content: center;
+                    z-index: 100; padding: 1rem; }
+  .modal-backdrop.hidden { display: none; }
+  .modal { background: var(--surface); border: 1px solid var(--surface2);
+           border-radius: var(--radius); padding: 1.75rem; width: 100%;
+           max-width: 520px; max-height: 90vh; overflow-y: auto; }
+  .modal h3 { margin-bottom: 1.25rem; font-size: 1.05rem; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+  .form-grid .full { grid-column: 1 / -1; }
+  label { font-size: .8rem; color: var(--muted); display: block; margin-bottom: .25rem; }
+  input, select, textarea {
+    width: 100%; background: var(--surface2); border: 1px solid #475569;
+    border-radius: 6px; color: var(--text); padding: .5rem .75rem; font-size: .875rem;
+  }
+  input:focus, select:focus { outline: 2px solid var(--accent); border-color: transparent; }
+  .form-actions { display: flex; justify-content: flex-end; gap: .75rem;
+                  margin-top: 1.25rem; }
+  .alert { padding: .75rem 1rem; border-radius: 6px; margin-top: .75rem; font-size: .85rem; }
+  .alert-ok  { background: rgba(74,222,128,.1); border: 1px solid var(--ok); color: var(--ok); }
+  .alert-err { background: rgba(248,113,113,.1); border: 1px solid var(--err); color: var(--err); }
+
+  /* ── Import tab ── */
+  .import-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+                 gap: 1rem; }
+  .import-card { background: var(--surface); border: 1px solid var(--surface2);
+                 border-radius: var(--radius); padding: 1.25rem; }
+  .import-card h3 { margin-bottom: .75rem; font-size: .95rem; color: var(--accent2); }
+  .import-card input[type=file] { margin-bottom: .75rem; }
+  .import-result { margin-top: .75rem; font-size: .8rem; color: var(--muted); white-space: pre-wrap; }
+
+  /* ── Empty state ── */
+  .empty { text-align: center; color: var(--muted); padding: 2.5rem 1rem; }
+  .empty span { font-size: 2rem; display: block; margin-bottom: .5rem; }
+
+  /* ── Responsive ── */
+  @media (max-width: 640px) {
+    .form-grid { grid-template-columns: 1fr; }
+    main { padding: 1rem; }
+    td, th { padding: .5rem .6rem; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="brand">⚡ Metering Admin</div>
+  <button class="active" onclick="showTab('units',this)">Wohneinheiten</button>
+  <button onclick="showTab('residents',this)">Mieter</button>
+  <button onclick="showTab('residencies',this)">Mietverhältnisse</button>
+  <button onclick="showTab('meters',this)">Zähler</button>
+  <button onclick="showTab('import',this)">CSV-Import</button>
+</nav>
+
+<main>
+
+<!-- ══════════════════════════════════════════════
+     TAB: UNITS
+══════════════════════════════════════════════ -->
+<div id="tab-units" class="tab active">
+  <div class="section-header">
+    <h2>Wohneinheiten</h2>
+    <div style="display:flex;gap:.75rem;align-items:center">
+      <label class="toggle-inactive">
+        <input type="checkbox" id="units-show-inactive" onchange="loadUnits()"> Inaktive anzeigen
+      </label>
+      <button class="btn btn-primary" onclick="openModal('unit')">+ Neue Unit</button>
+    </div>
+  </div>
+  <div class="card">
+    <table>
+      <thead><tr><th>ID</th><th>Name</th><th>Status</th><th>Erstellt</th><th>Aktionen</th></tr></thead>
+      <tbody id="units-body"><tr><td colspan="5" class="empty"><span>⏳</span>Lädt…</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     TAB: RESIDENTS
+══════════════════════════════════════════════ -->
+<div id="tab-residents" class="tab">
+  <div class="section-header">
+    <h2>Mieter</h2>
+    <div style="display:flex;gap:.75rem;align-items:center">
+      <label class="toggle-inactive">
+        <input type="checkbox" id="residents-show-inactive" onchange="loadResidents()"> Inaktive anzeigen
+      </label>
+      <button class="btn btn-primary" onclick="openModal('resident')">+ Neuer Mieter</button>
+    </div>
+  </div>
+  <div class="card">
+    <table>
+      <thead><tr><th>ID</th><th>Name</th><th>E-Mail</th><th>Status</th><th>Aktionen</th></tr></thead>
+      <tbody id="residents-body"><tr><td colspan="5" class="empty"><span>⏳</span>Lädt…</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     TAB: RESIDENCIES
+══════════════════════════════════════════════ -->
+<div id="tab-residencies" class="tab">
+  <div class="section-header">
+    <h2>Mietverhältnisse</h2>
+    <div style="display:flex;gap:.75rem;align-items:center">
+      <label class="toggle-inactive">
+        <input type="checkbox" id="residencies-show-inactive" onchange="loadResidencies()"> Inaktive anzeigen
+      </label>
+      <button class="btn btn-primary" onclick="openModal('residency')">+ Neues Mietverhältnis</button>
+    </div>
+  </div>
+  <div class="card">
+    <table>
+      <thead><tr><th>ID</th><th>Mieter</th><th>Unit</th><th>Von</th><th>Bis</th><th>Status</th><th>Aktionen</th></tr></thead>
+      <tbody id="residencies-body"><tr><td colspan="7" class="empty"><span>⏳</span>Lädt…</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     TAB: METERS
+══════════════════════════════════════════════ -->
+<div id="tab-meters" class="tab">
+  <div class="section-header">
+    <h2>Zähler</h2>
+    <div style="display:flex;gap:.75rem;align-items:center">
+      <label class="toggle-inactive">
+        <input type="checkbox" id="meters-show-inactive" onchange="loadMeters()"> Inaktive anzeigen
+      </label>
+      <button class="btn btn-primary" onclick="openModal('meter')">+ Neuer Zähler</button>
+    </div>
+  </div>
+  <div class="card">
+    <table>
+      <thead><tr><th>Sensor-ID</th><th>Label</th><th>Typ</th><th>Unit</th><th>Start</th><th>End</th><th>Status</th><th>Aktionen</th></tr></thead>
+      <tbody id="meters-body"><tr><td colspan="8" class="empty"><span>⏳</span>Lädt…</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     TAB: CSV-IMPORT
+══════════════════════════════════════════════ -->
+<div id="tab-import" class="tab">
+  <div class="section-header"><h2>CSV-Import</h2></div>
+  <p style="color:var(--muted);margin-bottom:1.5rem;font-size:.875rem;">
+    Imports sind idempotent – bereits vorhandene Einträge werden übersprungen, nicht überschrieben.
+  </p>
+  <div class="import-grid">
+    <div class="import-card">
+      <h3>🏢 Wohneinheiten</h3>
+      <p style="font-size:.78rem;color:var(--muted);margin-bottom:.75rem;">Spalten: <code>name</code></p>
+      <input type="file" id="file-units" accept=".csv">
+      <button class="btn btn-primary btn-sm" onclick="importCSV('units')">Importieren</button>
+      <div class="import-result" id="result-units"></div>
+    </div>
+    <div class="import-card">
+      <h3>👤 Mieter</h3>
+      <p style="font-size:.78rem;color:var(--muted);margin-bottom:.75rem;">Spalten: <code>surname, givenname, email</code></p>
+      <input type="file" id="file-residents" accept=".csv">
+      <button class="btn btn-primary btn-sm" onclick="importCSV('residents')">Importieren</button>
+      <div class="import-result" id="result-residents"></div>
+    </div>
+    <div class="import-card">
+      <h3>🔑 Mietverhältnisse</h3>
+      <p style="font-size:.78rem;color:var(--muted);margin-bottom:.75rem;">Spalten: <code>resident_id, unit, start, end</code></p>
+      <input type="file" id="file-residencies" accept=".csv">
+      <button class="btn btn-primary btn-sm" onclick="importCSV('residencies')">Importieren</button>
+      <div class="import-result" id="result-residencies"></div>
+    </div>
+    <div class="import-card">
+      <h3>⚡ Zähler</h3>
+      <p style="font-size:.78rem;color:var(--muted);margin-bottom:.75rem;">Spalten: <code>type, id, unit, label, start, end</code></p>
+      <input type="file" id="file-meters" accept=".csv">
+      <button class="btn btn-primary btn-sm" onclick="importCSV('meters')">Importieren</button>
+      <div class="import-result" id="result-meters"></div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<!-- ══════════════════════════════════════════════
+     MODALS
+══════════════════════════════════════════════ -->
+
+<!-- Unit Modal -->
+<div id="modal-unit" class="modal-backdrop hidden">
+  <div class="modal">
+    <h3 id="modal-unit-title">Wohneinheit anlegen</h3>
+    <div class="form-grid">
+      <div class="full">
+        <label>Name *</label>
+        <input id="unit-name" type="text" placeholder="z.B. Wohnung 2">
+      </div>
+      <div class="full" id="unit-active-row" style="display:none">
+        <label><input type="checkbox" id="unit-active"> Aktiv</label>
+      </div>
+    </div>
+    <div id="modal-unit-alert"></div>
+    <div class="form-actions">
+      <button class="btn btn-secondary" onclick="closeModal('unit')">Abbrechen</button>
+      <button class="btn btn-primary" onclick="saveUnit()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- Resident Modal -->
+<div id="modal-resident" class="modal-backdrop hidden">
+  <div class="modal">
+    <h3 id="modal-resident-title">Mieter anlegen</h3>
+    <div class="form-grid">
+      <div>
+        <label>Nachname *</label>
+        <input id="resident-surname" type="text">
+      </div>
+      <div>
+        <label>Vorname *</label>
+        <input id="resident-givenname" type="text">
+      </div>
+      <div class="full">
+        <label>E-Mail</label>
+        <input id="resident-email" type="email">
+      </div>
+      <div class="full" id="resident-active-row" style="display:none">
+        <label><input type="checkbox" id="resident-active"> Aktiv</label>
+      </div>
+    </div>
+    <div id="modal-resident-alert"></div>
+    <div class="form-actions">
+      <button class="btn btn-secondary" onclick="closeModal('resident')">Abbrechen</button>
+      <button class="btn btn-primary" onclick="saveResident()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- Residency Modal -->
+<div id="modal-residency" class="modal-backdrop hidden">
+  <div class="modal">
+    <h3 id="modal-residency-title">Mietverhältnis anlegen</h3>
+    <div class="form-grid">
+      <div>
+        <label>Mieter *</label>
+        <select id="residency-resident"></select>
+      </div>
+      <div>
+        <label>Wohneinheit *</label>
+        <select id="residency-unit"></select>
+      </div>
+      <div>
+        <label>Einzug *</label>
+        <input id="residency-start" type="datetime-local">
+      </div>
+      <div>
+        <label>Auszug</label>
+        <input id="residency-end" type="datetime-local">
+      </div>
+    </div>
+    <div id="modal-residency-alert"></div>
+    <div class="form-actions">
+      <button class="btn btn-secondary" onclick="closeModal('residency')">Abbrechen</button>
+      <button class="btn btn-primary" onclick="saveResidency()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- Meter Modal -->
+<div id="modal-meter" class="modal-backdrop hidden">
+  <div class="modal">
+    <h3 id="modal-meter-title">Zähler anlegen</h3>
+    <div class="form-grid">
+      <div class="full">
+        <label>Sensor-ID * <span style="color:var(--muted);font-size:.75rem">(z.B. sensor.tasmota_lk13be_e_in)</span></label>
+        <input id="meter-id" type="text" placeholder="sensor.…">
+      </div>
+      <div>
+        <label>Typ *</label>
+        <select id="meter-type">
+          <option value="1">electricity</option>
+          <option value="2">gas</option>
+          <option value="3">water</option>
+          <option value="4">heat</option>
+        </select>
+      </div>
+      <div>
+        <label>Wohneinheit</label>
+        <select id="meter-unit"><option value="">— Gemeinschaft —</option></select>
+      </div>
+      <div class="full">
+        <label>Bezeichnung (optional)</label>
+        <input id="meter-label" type="text" placeholder="z.B. Hauptzähler EG">
+      </div>
+      <div>
+        <label>Inbetriebnahme *</label>
+        <input id="meter-start" type="datetime-local">
+      </div>
+      <div>
+        <label>Außerbetriebnahme</label>
+        <input id="meter-end" type="datetime-local">
+      </div>
+      <div class="full" id="meter-active-row" style="display:none">
+        <label><input type="checkbox" id="meter-active"> Aktiv</label>
+      </div>
+    </div>
+    <div id="modal-meter-alert"></div>
+    <div class="form-actions">
+      <button class="btn btn-secondary" onclick="closeModal('meter')">Abbrechen</button>
+      <button class="btn btn-primary" onclick="saveMeter()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+//  State
+// ══════════════════════════════════════════════════════════
+const state = {
+  units: [], residents: [], residencies: [], meters: [],
+  editId: { unit: null, resident: null, residency: null, meter: null }
+};
+
+// ══════════════════════════════════════════════════════════
+//  Helpers
+// ══════════════════════════════════════════════════════════
+const $ = id => document.getElementById(id);
+const fmt = s => s ? new Date(s).toLocaleDateString('de-DE',
+  { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '–';
+
+async function api(method, path, body) {
+  const opts = { method, headers: {} };
+  if (body) { opts.body = JSON.stringify(body); opts.headers['Content-Type'] = 'application/json'; }
+  const r = await fetch('/api' + path, opts);
+  if (!r.ok) {
+    const e = await r.json().catch(() => ({ detail: r.statusText }));
+    throw new Error(e.detail || JSON.stringify(e));
+  }
+  return r.json();
+}
+
+function badge(active) {
+  return active
+    ? '<span class="badge badge-ok">aktiv</span>'
+    : '<span class="badge badge-muted">inaktiv</span>';
+}
+
+function setAlert(modal, msg, isError = true) {
+  $(`modal-${modal}-alert`).innerHTML =
+    `<div class="alert alert-${isError ? 'err' : 'ok'}">${msg}</div>`;
+}
+
+function clearAlert(modal) {
+  $(`modal-${modal}-alert`).innerHTML = '';
+}
+
+// ══════════════════════════════════════════════════════════
+//  Navigation
+// ══════════════════════════════════════════════════════════
+function showTab(name, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  $(`tab-${name}`).classList.add('active');
+  btn.classList.add('active');
+  ({ units: loadUnits, residents: loadResidents,
+     residencies: loadResidencies, meters: loadMeters,
+     import: () => {} })[name]?.();
+}
+
+// ══════════════════════════════════════════════════════════
+//  UNITS
+// ══════════════════════════════════════════════════════════
+async function loadUnits() {
+  const inc = $('units-show-inactive').checked;
+  state.units = await api('GET', `/units/?include_inactive=${inc}`);
+  const tbody = $('units-body');
+  if (!state.units.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty"><span>🏢</span>Keine Units gefunden</td></tr>';
+    return;
+  }
+  tbody.innerHTML = state.units.map(u => `
+    <tr>
+      <td><code>${u.id}</code></td>
+      <td>${u.name}</td>
+      <td>${badge(u.active)}</td>
+      <td>${fmt(u.created_at)}</td>
+      <td>
+        <button class="btn btn-secondary btn-sm" onclick="editUnit(${u.id})">✏️ Bearbeiten</button>
+        ${u.active
+          ? `<button class="btn btn-danger btn-sm" onclick="deactivate('unit',${u.id})">🚫 Deaktiv.</button>`
+          : `<button class="btn btn-secondary btn-sm" onclick="reactivate('unit',${u.id})">✅ Reaktiv.</button>`}
+      </td>
+    </tr>`).join('');
+}
+
+function openModal(type, clear = true) {
+  if (clear) {
+    state.editId[type] = null;
+    clearAlert(type);
+  }
+  $(`modal-${type}`).classList.remove('hidden');
+}
+
+function closeModal(type) {
+  $(`modal-${type}`).classList.add('hidden');
+}
+
+function editUnit(id) {
+  const u = state.units.find(x => x.id === id);
+  state.editId.unit = id;
+  $('modal-unit-title').textContent = 'Wohneinheit bearbeiten';
+  $('unit-name').value = u.name;
+  $('unit-active').checked = u.active;
+  $('unit-active-row').style.display = 'block';
+  clearAlert('unit');
+  openModal('unit', false);
+}
+
+async function saveUnit() {
+  clearAlert('unit');
+  try {
+    const name = $('unit-name').value.trim();
+    if (!name) { setAlert('unit', 'Name ist erforderlich.'); return; }
+    if (state.editId.unit) {
+      await api('PATCH', `/units/${state.editId.unit}`, {
+        name, active: $('unit-active').checked
+      });
+    } else {
+      await api('POST', '/units/', { name });
+    }
+    closeModal('unit');
+    $('unit-name').value = '';
+    $('unit-active-row').style.display = 'none';
+    $('modal-unit-title').textContent = 'Wohneinheit anlegen';
+    await loadUnits();
+  } catch (e) { setAlert('unit', e.message); }
+}
+
+async function deactivate(type, id) {
+  if (!confirm(`Eintrag #${id} wirklich deaktivieren?`)) return;
+  try {
+    await api('PATCH', `/${type}s/${id}`, { active: false });
+    await ({ unit: loadUnits, resident: loadResidents,
+              residency: loadResidencies, meter: () => {} })[type]?.();
+  } catch (e) { alert('Fehler: ' + e.message); }
+}
+
+async function reactivate(type, id) {
+  try {
+    await api('PATCH', `/${type}s/${id}`, { active: true });
+    await ({ unit: loadUnits, resident: loadResidents,
+              residency: loadResidencies, meter: () => {} })[type]?.();
+  } catch (e) { alert('Fehler: ' + e.message); }
+}
+
+// ══════════════════════════════════════════════════════════
+//  RESIDENTS
+// ══════════════════════════════════════════════════════════
+async function loadResidents() {
+  const inc = $('residents-show-inactive').checked;
+  state.residents = await api('GET', `/residents/?include_inactive=${inc}`);
+  const tbody = $('residents-body');
+  if (!state.residents.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty"><span>👤</span>Keine Mieter gefunden</td></tr>';
+    return;
+  }
+  tbody.innerHTML = state.residents.map(r => `
+    <tr>
+      <td><code>${r.id}</code></td>
+      <td>${r.surname}, ${r.givenname}</td>
+      <td>${r.email || '<span style="color:var(--muted)">–</span>'}</td>
+      <td>${badge(r.active)}</td>
+      <td>
+        <button class="btn btn-secondary btn-sm" onclick="editResident(${r.id})">✏️ Bearbeiten</button>
+        ${r.active
+          ? `<button class="btn btn-danger btn-sm" onclick="deactivate('resident',${r.id})">🚫 Deaktiv.</button>`
+          : `<button class="btn btn-secondary btn-sm" onclick="reactivate('resident',${r.id})">✅ Reaktiv.</button>`}
+      </td>
+    </tr>`).join('');
+}
+
+function editResident(id) {
+  const r = state.residents.find(x => x.id === id);
+  state.editId.resident = id;
+  $('modal-resident-title').textContent = 'Mieter bearbeiten';
+  $('resident-surname').value   = r.surname;
+  $('resident-givenname').value = r.givenname;
+  $('resident-email').value     = r.email || '';
+  $('resident-active').checked  = r.active;
+  $('resident-active-row').style.display = 'block';
+  clearAlert('resident');
+  openModal('resident', false);
+}
+
+async function saveResident() {
+  clearAlert('resident');
+  try {
+    const body = {
+      surname:   $('resident-surname').value.trim(),
+      givenname: $('resident-givenname').value.trim(),
+      email:     $('resident-email').value.trim() || null,
+    };
+    if (!body.surname || !body.givenname) {
+      setAlert('resident', 'Name ist erforderlich.'); return;
+    }
+    if (state.editId.resident) {
+      body.active = $('resident-active').checked;
+      await api('PATCH', `/residents/${state.editId.resident}`, body);
+    } else {
+      await api('POST', '/residents/', body);
+    }
+    closeModal('resident');
+    $('modal-resident-title').textContent = 'Mieter anlegen';
+    $('resident-active-row').style.display = 'none';
+    await loadResidents();
+  } catch (e) { setAlert('resident', e.message); }
+}
+
+// ══════════════════════════════════════════════════════════
+//  RESIDENCIES
+// ══════════════════════════════════════════════════════════
+async function loadResidencies() {
+  const inc = $('residencies-show-inactive').checked;
+  state.residencies = await api('GET', `/residencies/?include_inactive=${inc}`);
+  const tbody = $('residencies-body');
+  if (!state.residencies.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty"><span>🔑</span>Keine Mietverhältnisse gefunden</td></tr>';
+    return;
+  }
+  const rMap = Object.fromEntries(state.residents.map(r => [r.id, r]));
+  const uMap = Object.fromEntries(state.units.map(u => [u.id, u]));
+  tbody.innerHTML = state.residencies.map(r => {
+    const res = rMap[r.resident_id];
+    const unit = uMap[r.unit_id];
+    return `<tr>
+      <td><code>${r.id}</code></td>
+      <td>${res ? `${res.surname}, ${res.givenname}` : r.resident_id}</td>
+      <td>${unit ? unit.name : r.unit_id}</td>
+      <td>${fmt(r.start_date)}</td>
+      <td>${r.end_date ? fmt(r.end_date) : '<span class="badge badge-ok">offen</span>'}</td>
+      <td>${badge(r.active)}</td>
+      <td>
+        ${r.active && !r.end_date
+          ? `<button class="btn btn-danger btn-sm" onclick="endResidency(${r.id})">🚪 Beenden</button>`
+          : ''}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function populateResidencySelects() {
+  // Residents
+  const rSel = $('residency-resident');
+  const active_residents = state.residents.filter(r => r.active);
+  rSel.innerHTML = active_residents.map(r =>
+    `<option value="${r.id}">${r.surname}, ${r.givenname}</option>`).join('');
+  // Units
+  const uSel = $('residency-unit');
+  const active_units = state.units.filter(u => u.active);
+  uSel.innerHTML = active_units.map(u =>
+    `<option value="${u.id}">${u.name}</option>`).join('');
+}
+
+async function openResidencyModal() {
+  // Sicherstellen dass aktuelle Daten geladen sind
+  if (!state.residents.length) state.residents = await api('GET', '/residents/');
+  if (!state.units.length)     state.units     = await api('GET', '/units/');
+  await populateResidencySelects();
+  $('residency-start').value = '';
+  $('residency-end').value   = '';
+  openModal('residency');
+}
+
+async function saveResidency() {
+  clearAlert('residency');
+  try {
+    const body = {
+      resident_id: parseInt($('residency-resident').value),
+      unit_id:     parseInt($('residency-unit').value),
+      start_date:  new Date($('residency-start').value).toISOString(),
+      end_date:    $('residency-end').value
+                   ? new Date($('residency-end').value).toISOString() : null,
+    };
+    if (!$('residency-start').value) {
+      setAlert('residency', 'Einzugsdatum ist erforderlich.'); return;
+    }
+    await api('POST', '/residencies/', body);
+    closeModal('residency');
+    await loadResidencies();
+  } catch (e) { setAlert('residency', e.message); }
+}
+
+async function endResidency(id) {
+  const end = prompt('Auszugsdatum (YYYY-MM-DD):');
+  if (!end) return;
+  try {
+    await api('PATCH', `/residencies/${id}`, {
+      end_date: new Date(end).toISOString(),
+      active: true   // bleibt aktiv bis explizit deaktiviert
+    });
+    await loadResidencies();
+  } catch (e) { alert('Fehler: ' + e.message); }
+}
+
+// ══════════════════════════════════════════════════════════
+//  METERS
+// ══════════════════════════════════════════════════════════
+async function loadMeters() {
+  const inc = $('meters-show-inactive').checked;
+  state.meters = await api('GET', `/meters/?include_inactive=${inc}`);
+  const uMap = Object.fromEntries(state.units.map(u => [u.id, u]));
+  const typeMap = { 1:'electricity', 2:'gas', 3:'water', 4:'heat' };
+  const tbody = $('meters-body');
+  if (!state.meters.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="empty"><span>⚡</span>Keine Zähler gefunden</td></tr>';
+    return;
+  }
+  tbody.innerHTML = state.meters.map(m => `
+    <tr>
+      <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis">
+        <code title="${m.id}">${m.id}</code></td>
+      <td>${m.label || '<span style="color:var(--muted)">–</span>'}</td>
+      <td><span class="badge badge-muted">${typeMap[m.type_id] || m.type_id}</span></td>
+      <td>${uMap[m.unit_id]?.name || (m.unit_id == null ? '<span style="color:var(--muted)">Gemeinschaft</span>' : m.unit_id)}</td>
+      <td>${fmt(m.start_date)}</td>
+      <td>${m.end_date ? fmt(m.end_date) : '–'}</td>
+      <td>${badge(m.active)}</td>
+      <td>
+        <button class="btn btn-secondary btn-sm" onclick="editMeter('${m.id.replace(/'/g,"\\'")}')">✏️</button>
+        ${m.active
+          ? `<button class="btn btn-danger btn-sm" onclick="deactivateMeter('${m.id.replace(/'/g,"\\'")}')">🚫</button>`
+          : ''}
+      </td>
+    </tr>`).join('');
+}
+
+async function openMeterModal() {
+  if (!state.units.length) state.units = await api('GET', '/units/');
+  const uSel = $('meter-unit');
+  uSel.innerHTML = '<option value="">— Gemeinschaft —</option>' +
+    state.units.filter(u => u.active).map(u =>
+      `<option value="${u.id}">${u.name}</option>`).join('');
+  $('meter-id').value    = '';
+  $('meter-label').value = '';
+  $('meter-start').value = '';
+  $('meter-end').value   = '';
+  $('meter-active-row').style.display = 'none';
+  $('modal-meter-title').textContent  = 'Zähler anlegen';
+  $('meter-id').readOnly = false;
+  openModal('meter');
+}
+
+function editMeter(id) {
+  const m = state.meters.find(x => x.id === id);
+  state.editId.meter = id;
+  $('modal-meter-title').textContent = 'Zähler bearbeiten';
+  $('meter-id').value     = m.id;
+  $('meter-id').readOnly  = true;   // ID unveränderlich
+  $('meter-label').value  = m.label || '';
+  $('meter-type').value   = m.type_id;
+  $('meter-unit').value   = m.unit_id || '';
+  $('meter-start').value  = m.start_date?.slice(0,16) || '';
+  $('meter-end').value    = m.end_date?.slice(0,16)   || '';
+  $('meter-active').checked = m.active;
+  $('meter-active-row').style.display = 'block';
+  clearAlert('meter');
+  openModal('meter', false);
+}
+
+async function saveMeter() {
+  clearAlert('meter');
+  try {
+    const body = {
+      id:         $('meter-id').value.trim(),
+      type_id:    parseInt($('meter-type').value),
+      unit_id:    $('meter-unit').value ? parseInt($('meter-unit').value) : null,
+      label:      $('meter-label').value.trim() || null,
+      start_date: new Date($('meter-start').value).toISOString(),
+      end_date:   $('meter-end').value ? new Date($('meter-end').value).toISOString() : null,
+    };
+    if (!body.id || !$('meter-start').value) {
+      setAlert('meter', 'Sensor-ID und Inbetriebnahme sind erforderlich.'); return;
+    }
+    if (state.editId.meter) {
+      const patch = { type_id: body.type_id, unit_id: body.unit_id, label: body.label,
+                      end_date: body.end_date, active: $('meter-active').checked };
+      await api('PATCH', `/meters/${encodeURIComponent(state.editId.meter)}`, patch);
+    } else {
+      await api('POST', '/meters/', body);
+    }
+    closeModal('meter');
+    state.editId.meter = null;
+    await loadMeters();
+  } catch (e) { setAlert('meter', e.message); }
+}
+
+async function deactivateMeter(id) {
+  const end = prompt('Außerbetriebnahmedatum (YYYY-MM-DD):');
+  if (!end) return;
+  try {
+    await api('PATCH', `/meters/${encodeURIComponent(id)}`, {
+      end_date: new Date(end).toISOString(), active: false
+    });
+    await loadMeters();
+  } catch (e) { alert('Fehler: ' + e.message); }
+}
+
+// ══════════════════════════════════════════════════════════
+//  CSV IMPORT
+// ══════════════════════════════════════════════════════════
+async function importCSV(type) {
+  const file = $(`file-${type}`).files[0];
+  if (!file) { alert('Bitte eine CSV-Datei auswählen.'); return; }
+  const form = new FormData();
+  form.append('file', file);
+  const res = $(`result-${type}`);
+  res.textContent = 'Importiere…';
+  try {
+    const r = await fetch(`/api/import/${type}`, { method: 'POST', body: form });
+    const data = await r.json();
+    let txt = `✅ Erstellt: ${data.created}   ⏭️ Übersprungen: ${data.skipped}`;
+    if (data.errors.length) txt += '\n\n⚠️ Hinweise:\n' + data.errors.join('\n');
+    res.textContent = txt;
+  } catch (e) { res.textContent = '❌ Fehler: ' + e.message; }
+}
+
+// ══════════════════════════════════════════════════════════
+//  Button-Overrides (Modals die Selects befüllen müssen)
+// ══════════════════════════════════════════════════════════
+document.querySelector('#tab-residencies .btn-primary')
+  .setAttribute('onclick', 'openResidencyModal()');
+document.querySelector('#tab-meters .btn-primary')
+  .setAttribute('onclick', 'openMeterModal()');
+
+// ══════════════════════════════════════════════════════════
+//  Init
+// ══════════════════════════════════════════════════════════
+loadUnits();
+</script>
+</body>
+</html>

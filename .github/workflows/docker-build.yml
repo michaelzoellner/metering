@@ -1,4 +1,4 @@
-name: Build and Push Docker Image
+name: Build and Push Docker Images
 
 on:
   push:
@@ -7,7 +7,8 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  FULL_IMAGE_NAME: ghcr.io/michaelzoellner/metering-collector
+  COLLECTOR_IMAGE: ghcr.io/michaelzoellner/metering-collector
+  ADMIN_IMAGE:     ghcr.io/michaelzoellner/metering-admin
 
 jobs:
   build-and-push:
@@ -27,10 +28,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push Docker image
+      # ── Collector ──────────────────────────────────────────
+      - name: Build and push collector image
         uses: docker/build-push-action@v6
         with:
-          context: .  # 👈 Zurück auf das Hauptverzeichnis stellen
-          file: ./collector/Dockerfile # 👈 Das Dockerfile bleibt im Unterordner
+          context: .
+          file: ./collector/Dockerfile
           push: true
-          tags: ${{ env.FULL_IMAGE_NAME }}:latest
+          tags: ${{ env.COLLECTOR_IMAGE }}:latest
+
+      # ── Admin-Dashboard ────────────────────────────────────
+      - name: Build and push admin image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./admin
+          file: ./admin/Dockerfile
+          push: true
+          tags: ${{ env.ADMIN_IMAGE }}:latest
