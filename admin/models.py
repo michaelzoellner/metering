@@ -4,7 +4,7 @@ from sqlalchemy import (
     TIMESTAMP, UniqueConstraint, CheckConstraint
 )
 from sqlalchemy.orm import relationship
-from .database import Base
+from database import Base
 
 
 class Unit(Base):

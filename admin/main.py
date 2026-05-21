@@ -3,8 +3,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.responses import FileResponse
 import secrets
-from .config import settings
-from .routers import units, meters, residents, residencies, import_csv
+from config import settings
+from routers import units, meters, residents, residencies, import_csv
 
 app = FastAPI(
     title="Metering Admin API",
