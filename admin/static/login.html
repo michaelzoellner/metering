@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Metering Admin – Login</title>
+<style>
+  :root {
+    --bg: #0f172a; --surface: #1e293b; --surface2: #334155;
+    --accent: #38bdf8; --text: #e2e8f0; --muted: #94a3b8;
+    --err: #f87171; --radius: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh; display: flex;
+    align-items: center; justify-content: center;
+  }
+  .card {
+    background: var(--surface); border: 1px solid var(--surface2);
+    border-radius: var(--radius); padding: 2.5rem 2rem;
+    width: 100%; max-width: 360px;
+  }
+  .brand {
+    font-size: 1.4rem; font-weight: 700;
+    color: var(--accent); text-align: center; margin-bottom: 2rem;
+  }
+  label { font-size: .8rem; color: var(--muted); display: block; margin-bottom: .25rem; }
+  input {
+    width: 100%; background: var(--surface2); border: 1px solid #475569;
+    border-radius: 6px; color: var(--text); padding: .6rem .75rem;
+    font-size: .9rem; margin-bottom: 1rem;
+  }
+  input:focus { outline: 2px solid var(--accent); border-color: transparent; }
+  button {
+    width: 100%; background: var(--accent); color: #0f172a;
+    border: none; border-radius: var(--radius); padding: .65rem;
+    font-size: .95rem; font-weight: 600; cursor: pointer; margin-top: .25rem;
+  }
+  button:hover { opacity: .88; }
+  .error {
+    background: rgba(248,113,113,.1); border: 1px solid var(--err);
+    color: var(--err); border-radius: 6px; padding: .6rem .75rem;
+    font-size: .85rem; margin-bottom: 1rem; display: none;
+  }
+  .error.visible { display: block; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="brand">⚡ Metering Admin</div>
+
+  <!-- Fehlermeldung vom Server (Query-Parameter) -->
+  <div class="error" id="err-box"></div>
+
+  <form method="post" action="/login">
+    <label>Benutzername</label>
+    <input type="text" name="username" autocomplete="username" required autofocus>
+
+    <label>Passwort</label>
+    <input type="password" name="password" autocomplete="current-password" required>
+
+    <button type="submit">Einloggen</button>
+  </form>
+</div>
+<script>
+  // Fehlermeldung aus URL-Parameter anzeigen (z.B. ?error=1)
+  const params = new URLSearchParams(location.search);
+  if (params.get('error')) {
+    const box = document.getElementById('err-box');
+    box.textContent = 'Ungültige Zugangsdaten';
+    box.classList.add('visible');
+  }
+</script>
+</body>
+</html>

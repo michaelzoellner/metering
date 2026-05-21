@@ -793,15 +793,7 @@ async function importCSV(type) {
 }
 
 function logout() {
-  // Fetch mit falschen Credentials → überschreibt den Browser-Cache
-  fetch('/logout', {
-    headers: {
-      'Authorization': 'Basic ' + btoa('logout:logout')
-    }
-  }).finally(() => {
-    // Nach dem Cache-Reset zur Login-Seite weiterleiten
-    window.location.href = '/';
-  });
+  window.location.href = '/logout';
 }
 
 // ══════════════════════════════════════════════════════════
